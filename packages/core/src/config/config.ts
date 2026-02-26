@@ -27,6 +27,7 @@ import { GrepTool } from '../tools/grep.js';
 import { canUseRipgrep, RipGrepTool } from '../tools/ripGrep.js';
 import { GlobTool } from '../tools/glob.js';
 import { ActivateSkillTool } from '../tools/activate-skill.js';
+import { DiffTool } from '../tools/diff.js';
 import { EditTool } from '../tools/edit.js';
 import { ShellTool } from '../tools/shell.js';
 import { WriteFileTool } from '../tools/write-file.js';
@@ -39,8 +40,13 @@ import { EnterPlanModeTool } from '../tools/enter-plan-mode.js';
 import { GeminiClient } from '../core/client.js';
 import { BaseLlmClient } from '../core/baseLlmClient.js';
 import type { HookDefinition, HookEventName } from '../hooks/types.js';
-import { FileDiscoveryService } from '../services/fileDiscoveryService.js';
-import { GitService } from '../services/gitService.js';
+
+  DEFAULT_TELEMETRY_TARGET,
+  DEFAULT_OTLP_ENDPOINT,
+  uiTelemetryService,
+} from '../telemetry/index.js';
+import { coreEvents, CoreEvent } from '../utils/events.js';
+import { tokenLimit } from '../core/tokenLimits.js';
 import type { TelemetryTarget } from '../telemetry/index.js';
 import {
   initializeTelemetry,
@@ -48,12 +54,7 @@ import {
   DEFAULT_OTLP_ENDPOINT,
   uiTelemetryService,
 } from '../telemetry/index.js';
-import { coreEvents, CoreEvent } from '../utils/events.js';
-import { tokenLimit } from '../core/tokenLimits.js';
-import {
-  DEFAULT_GEMINI_EMBEDDING_MODEL,
-  DEFAULT_GEMINI_FLASH_MODEL,
-  DEFAULT_GEMINI_MODEL,
+
   DEFAULT_GEMINI_MODEL_AUTO,
   isAutoModel,
   isPreviewModel,
@@ -2686,9 +2687,13 @@ export class Config {
           registry.registerTool(new GrepTool(this, this.messageBus)),
         );
       }
-    } else {
-      maybeRegister(GrepTool, () =>
-        registry.registerTool(new GrepTool(this, this.messageBus)),
+    maybeRegister(ActivateSkillTool, () =>
+      registry.registerTool(new ActivateSkillTool(this, this.messageBus)),
+    );
+    maybeRegister(DiffTool, () =>
+      registry.registerTool(new DiffTool(this, this.messageBus)),
+    );
+
       );
     }
 

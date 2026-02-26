@@ -47,16 +47,14 @@ import { getShellDefinition } from './definitions/coreTools.js';
 import { resolveToolDeclaration } from './definitions/resolver.js';
 
 export const OUTPUT_UPDATE_INTERVAL_MS = 1000;
-
-// Delay so user does not see the output of the process before the process is moved to the background.
-const BACKGROUND_DELAY_MS = 200;
-
 export interface ShellToolParams {
   command: string;
   description?: string;
   dir_path?: string;
   is_background?: boolean;
+  shell_type?: ShellType;
 }
+
 
 export class ShellToolInvocation extends BaseToolInvocation<
   ShellToolParams,
@@ -282,10 +280,9 @@ export class ShellToolInvocation extends BaseToolInvocation<
               shellExecutionConfig?.sanitizationConfig ??
               this.config.sanitizationConfig,
           },
+          this.params.shell_type,
         );
 
-      if (pid) {
-        if (setPidCallback) {
           setPidCallback(pid);
         }
 

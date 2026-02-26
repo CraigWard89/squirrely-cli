@@ -532,45 +532,45 @@ export function parseCommandDetails(
     return parseBashCommandDetails(command);
   }
 
-  return null;
-}
-
 /**
  * Determines the appropriate shell configuration for the current platform.
  *
  * This ensures we can execute command strings predictably and securely across platforms
  * using the `spawn(executable, [...argsPrefix, commandString], { shell: false })` pattern.
  *
+ * @param shellType Optional: The specific shell type to use. Defaults to 'cmd' on Windows and 'bash' on Unix.
  * @returns The ShellConfiguration for the current environment.
  */
-export function getShellConfiguration(): ShellConfiguration {
+export function getShellConfiguration(
+  shellType?: ShellType,
+): ShellConfiguration {
+
   if (isWindows()) {
-    const comSpec = process.env['ComSpec'];
-    if (comSpec) {
-      const executable = comSpec.toLowerCase();
-      if (
-        executable.endsWith('powershell.exe') ||
-        executable.endsWith('pwsh.exe')
-      ) {
-        return {
-          executable: comSpec,
-          argsPrefix: ['-NoProfile', '-Command'],
-          shell: 'powershell',
-        };
-      }
+    if (shellType === 'bash') {
+      return { executable: 'bash', argsPrefix: ['-c'], shell: 'bash' };
     }
 
-    // Default to PowerShell for all other Windows configurations.
+    if (shellType === 'powershell') {
+      return {
+        executable: 'powershell.exe',
+        argsPrefix: ['-NoProfile', '-Command'],
+        shell: 'powershell',
+      };
+    }
+
+    // Default to cmd.exe for Windows if not explicitly requested otherwise.
+    const comSpec = process.env['ComSpec'] || 'cmd.exe';
     return {
-      executable: 'powershell.exe',
-      argsPrefix: ['-NoProfile', '-Command'],
-      shell: 'powershell',
+      executable: comSpec,
+      argsPrefix: ['/d', '/s', '/c'],
+      shell: 'cmd',
     };
   }
 
   // Unix-like systems (Linux, macOS)
   return { executable: 'bash', argsPrefix: ['-c'], shell: 'bash' };
 }
+
 
 /**
  * Export the platform detection constant for use in process management (e.g., killing processes).

@@ -79,7 +79,7 @@ const OAUTH_CLIENT_ID =
 const OAUTH_CLIENT_SECRET =
   process.env['GEMINI_CLI_OAUTH_CLIENT_SECRET'] ?? 'REDACTED';
 
-// OAuth Scopes for Cloud Code authorization.
+
 const OAUTH_SCOPE = [
   'https://www.googleapis.com/auth/cloud-platform',
   'https://www.googleapis.com/auth/userinfo.email',

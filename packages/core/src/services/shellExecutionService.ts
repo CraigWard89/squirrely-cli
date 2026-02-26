@@ -190,6 +190,7 @@ const getFullBufferText = (terminal: pkg.Terminal): string => {
   return lines.join('\n');
 };
 
+
 /**
  * A centralized service for executing shell commands with robust process
  * management, cross-platform compatibility, and streaming output capabilities.
@@ -228,6 +229,7 @@ export class ShellExecutionService {
     abortSignal: AbortSignal,
     shouldUseNodePty: boolean,
     shellExecutionConfig: ShellExecutionConfig,
+    shellType?: ShellType,
   ): Promise<ShellExecutionHandle> {
     if (shouldUseNodePty) {
       const ptyInfo = await getPty();
@@ -240,6 +242,7 @@ export class ShellExecutionService {
             abortSignal,
             shellExecutionConfig,
             ptyInfo,
+            shellType,
           );
         } catch (_e) {
           // Fallback to child_process
@@ -253,8 +256,12 @@ export class ShellExecutionService {
       onOutputEvent,
       abortSignal,
       shellExecutionConfig.sanitizationConfig,
+      shellType,
     );
   }
+
+  }
+
 
   private static appendAndTruncate(
     currentBuffer: string,
@@ -299,12 +306,14 @@ export class ShellExecutionService {
     onOutputEvent: (event: ShellOutputEvent) => void,
     abortSignal: AbortSignal,
     sanitizationConfig: EnvironmentSanitizationConfig,
+    shellType?: ShellType,
   ): ShellExecutionHandle {
     try {
       const isWindows = os.platform() === 'win32';
-      const { executable, argsPrefix, shell } = getShellConfiguration();
+      const { executable, argsPrefix, shell } = getShellConfiguration(shellType);
       const guardedCommand = ensurePromptvarsDisabled(commandToExecute, shell);
       const spawnArgs = [...argsPrefix, guardedCommand];
+
 
       const child = cpSpawn(executable, spawnArgs, {
         cwd,
@@ -548,6 +557,7 @@ export class ShellExecutionService {
     abortSignal: AbortSignal,
     shellExecutionConfig: ShellExecutionConfig,
     ptyInfo: PtyImplementation,
+    shellType?: ShellType,
   ): Promise<ShellExecutionHandle> {
     if (!ptyInfo) {
       // This should not happen, but as a safeguard...
@@ -556,7 +566,8 @@ export class ShellExecutionService {
     try {
       const cols = shellExecutionConfig.terminalWidth ?? 80;
       const rows = shellExecutionConfig.terminalHeight ?? 30;
-      const { executable, argsPrefix, shell } = getShellConfiguration();
+      const { executable, argsPrefix, shell } = getShellConfiguration(shellType);
+
 
       const resolvedExecutable = await resolveExecutable(executable);
       if (!resolvedExecutable) {

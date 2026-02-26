@@ -17,9 +17,13 @@ export const GLOB_TOOL_NAME = 'glob';
 export const GREP_TOOL_NAME = 'grep_search';
 export const LS_TOOL_NAME = 'list_directory';
 export const READ_FILES_TOOL_NAME = 'read_files';
+export const DIFF_TOOL_NAME = 'diff';
 export const SHELL_TOOL_NAME = 'run_shell_command';
+
+export const POWERSHELL_TOOL_NAME = 'run_powershell_command';
 export const WRITE_FILE_TOOL_NAME = 'write_file';
 export const EDIT_TOOL_NAME = 'edit_file';
+
 export const WEB_SEARCH_TOOL_NAME = 'google_web_search';
 
 export const WRITE_TODOS_TOOL_NAME = 'write_todos';
