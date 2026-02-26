@@ -17,6 +17,7 @@ import { LS_TOOL_NAME } from './tool-names.js';
 import { debugLogger } from '../utils/debugLogger.js';
 import { LS_DEFINITION } from './definitions/coreTools.js';
 import { resolveToolDeclaration } from './definitions/resolver.js';
+import { isNodeError } from '../utils/errors.js';
 
 /**
  * Parameters for the LS tool
@@ -139,20 +140,20 @@ class LSToolInvocation extends BaseToolInvocation<LSToolParams, ToolResult> {
    * Executes the LS operation with the given parameters
    * @returns Result of the LS operation
    */
-  async execute(_signal: AbortSignal): Promise<ToolResult> {
-    const resolvedDirPath = path.resolve(
+  async execute(signal: AbortSignal): Promise<ToolResult> {
+    const resolvedPath = path.resolve(
       this.config.getTargetDir(),
       this.params.dir_path,
     );
-
-    const validationError = this.config.validatePathAccess(
-      resolvedDirPath,
+    const validationError = await this.config.checkWorkspaceExit(
+      resolvedPath,
       'read',
+      signal,
     );
     if (validationError) {
       return {
         llmContent: validationError,
-        returnDisplay: 'Path not in workspace.',
+        returnDisplay: 'Workspace access denied.',
         error: {
           message: validationError,
           type: ToolErrorType.PATH_NOT_IN_WORKSPACE,
@@ -161,29 +162,19 @@ class LSToolInvocation extends BaseToolInvocation<LSToolParams, ToolResult> {
     }
 
     try {
-      const stats = await fs.stat(resolvedDirPath);
-      if (!stats) {
-        // fs.statSync throws on non-existence, so this check might be redundant
-        // but keeping for clarity. Error message adjusted.
-        return this.errorResult(
-          `Error: Directory not found or inaccessible: ${resolvedDirPath}`,
-          `Directory not found or inaccessible.`,
-          ToolErrorType.FILE_NOT_FOUND,
-        );
-      }
+      const stats = await fs.stat(resolvedPath);
       if (!stats.isDirectory()) {
         return this.errorResult(
-          `Error: Path is not a directory: ${resolvedDirPath}`,
+          `Error: Path is not a directory: ${resolvedPath}`,
           `Path is not a directory.`,
           ToolErrorType.PATH_IS_NOT_A_DIRECTORY,
         );
       }
 
-      const files = await fs.readdir(resolvedDirPath);
+      const files = await fs.readdir(resolvedPath);
       if (files.length === 0) {
-        // Changed error message to be more neutral for LLM
         return {
-          llmContent: `Directory ${resolvedDirPath} is empty.`,
+          llmContent: `Directory ${resolvedPath} is empty.`,
           returnDisplay: `Directory is empty.`,
         };
       }
@@ -191,7 +182,7 @@ class LSToolInvocation extends BaseToolInvocation<LSToolParams, ToolResult> {
       const relativePaths = files.map((file) =>
         path.relative(
           this.config.getTargetDir(),
-          path.join(resolvedDirPath, file),
+          path.join(resolvedPath, file),
         ),
       );
 
@@ -249,7 +240,7 @@ class LSToolInvocation extends BaseToolInvocation<LSToolParams, ToolResult> {
         })
         .join('\n');
 
-      let resultMessage = `Directory listing for ${resolvedDirPath}:\n${directoryContent}`;
+      let resultMessage = `Directory listing for ${resolvedPath}:\n${directoryContent}`;
       if (ignoredCount > 0) {
         resultMessage += `\n\n(${ignoredCount} ignored)`;
       }
@@ -264,6 +255,13 @@ class LSToolInvocation extends BaseToolInvocation<LSToolParams, ToolResult> {
         returnDisplay: displayMessage,
       };
     } catch (error) {
+      if (isNodeError(error) && error.code === 'ENOENT') {
+        return this.errorResult(
+          `Error: Directory not found: ${resolvedPath}`,
+          `Directory not found.`,
+          ToolErrorType.FILE_NOT_FOUND,
+        );
+      }
       const errorMsg = `Error listing directory: ${error instanceof Error ? error.message : String(error)}`;
       return this.errorResult(
         errorMsg,
@@ -302,13 +300,9 @@ export class LSTool extends BaseDeclarativeTool<LSToolParams, ToolResult> {
    * @returns An error message string if invalid, null otherwise
    */
   protected override validateToolParamValues(
-    params: LSToolParams,
+    _params: LSToolParams,
   ): string | null {
-    const resolvedPath = path.resolve(
-      this.config.getTargetDir(),
-      params.dir_path,
-    );
-    return this.config.validatePathAccess(resolvedPath, 'read');
+    return null;
   }
 
   protected createInvocation(

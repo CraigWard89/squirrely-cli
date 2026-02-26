@@ -44,6 +44,11 @@ export interface ReadFileToolParams {
    * The line number to end reading at (optional, 1-based, inclusive)
    */
   end_line?: number;
+
+  /**
+   * If true, includes 1-based line numbers at the start of each line.
+   */
+  include_line_numbers?: boolean;
 }
 
 class ReadFileToolInvocation extends BaseToolInvocation<
@@ -82,15 +87,16 @@ class ReadFileToolInvocation extends BaseToolInvocation<
     ];
   }
 
-  async execute(): Promise<ToolResult> {
-    const validationError = this.config.validatePathAccess(
+  async execute(signal: AbortSignal): Promise<ToolResult> {
+    const validationError = await this.config.checkWorkspaceExit(
       this.resolvedPath,
       'read',
+      signal,
     );
     if (validationError) {
       return {
         llmContent: validationError,
-        returnDisplay: 'Path not in workspace.',
+        returnDisplay: 'Workspace access denied.',
         error: {
           message: validationError,
           type: ToolErrorType.PATH_NOT_IN_WORKSPACE,
@@ -98,12 +104,12 @@ class ReadFileToolInvocation extends BaseToolInvocation<
       };
     }
 
-    const result = await processSingleFileContent(
       this.resolvedPath,
       this.config.getTargetDir(),
       this.config.getFileSystemService(),
       this.params.start_line,
       this.params.end_line,
+      this.params.include_line_numbers,
     );
 
     if (result.error) {
@@ -201,14 +207,6 @@ export class ReadFileTool extends BaseDeclarativeTool<
       this.config.getTargetDir(),
       params.file_path,
     );
-
-    const validationError = this.config.validatePathAccess(
-      resolvedPath,
-      'read',
-    );
-    if (validationError) {
-      return validationError;
-    }
 
     if (params.start_line !== undefined && params.start_line < 1) {
       return 'start_line must be at least 1';

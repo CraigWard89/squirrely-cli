@@ -125,22 +125,24 @@ class GlobToolInvocation extends BaseToolInvocation<
           this.config.getTargetDir(),
           this.params.dir_path,
         );
-        const validationError = this.config.validatePathAccess(
-          searchDirAbsolute,
+        const validationError = await this.config.checkWorkspaceExit(
+          searchDirAbs,
           'read',
+          signal,
         );
         if (validationError) {
           return {
-            llmContent: validationError,
-            returnDisplay: 'Path not in workspace.',
-            error: {
-              message: validationError,
+        const validationError = await this.config.checkWorkspaceExit(
+          searchDirAbsolute,
+          'read',
+          signal,
+        );
+
               type: ToolErrorType.PATH_NOT_IN_WORKSPACE,
             },
           };
         }
-        searchDirectories = [searchDirAbsolute];
-      } else {
+
         // Search across all workspace directories
         searchDirectories = workspaceDirectories;
       }
@@ -291,14 +293,6 @@ export class GlobTool extends BaseDeclarativeTool<GlobToolParams, ToolResult> {
       this.config.getTargetDir(),
       params.dir_path || '.',
     );
-
-    const validationError = this.config.validatePathAccess(
-      searchDirAbsolute,
-      'read',
-    );
-    if (validationError) {
-      return validationError;
-    }
 
     const targetDir = searchDirAbsolute || this.config.getTargetDir();
     try {

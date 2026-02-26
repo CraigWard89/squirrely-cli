@@ -161,7 +161,7 @@ export async function checkPermissions(
       path.resolve(config.getTargetDir(), pathName),
     );
 
-    if (config.validatePathAccess(resolvedPathName, 'read')) {
+    if (await config.validatePathAccess(resolvedPathName, 'read')) {
       if (await fileExists(resolvedPathName)) {
         permissionsRequired.push(resolvedPathName);
       }

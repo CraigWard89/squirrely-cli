@@ -138,14 +138,17 @@ class GrepToolInvocation extends BaseToolInvocation<
       let searchDirAbs: string | null = null;
       if (pathParam) {
         searchDirAbs = path.resolve(this.config.getTargetDir(), pathParam);
-        const validationError = this.config.validatePathAccess(
+        const validationError = await this.config.checkWorkspaceExit(
           searchDirAbs,
           'read',
+          signal,
         );
+
+
         if (validationError) {
           return {
             llmContent: validationError,
-            returnDisplay: 'Error: Path not in workspace.',
+            returnDisplay: 'Workspace access denied.',
             error: {
               message: validationError,
               type: ToolErrorType.PATH_NOT_IN_WORKSPACE,
@@ -153,7 +156,6 @@ class GrepToolInvocation extends BaseToolInvocation<
           };
         }
 
-        try {
           const stats = await fsPromises.stat(searchDirAbs);
           if (!stats.isDirectory()) {
             return {
@@ -646,13 +648,6 @@ export class GrepTool extends BaseDeclarativeTool<GrepToolParams, ToolResult> {
         this.config.getTargetDir(),
         params.dir_path,
       );
-      const validationError = this.config.validatePathAccess(
-        resolvedPath,
-        'read',
-      );
-      if (validationError) {
-        return validationError;
-      }
 
       // We still want to check if it's a directory
       try {

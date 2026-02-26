@@ -22,7 +22,7 @@ import { PromptRegistry } from '../prompts/prompt-registry.js';
 import { ResourceRegistry } from '../resources/resource-registry.js';
 import { ToolRegistry } from '../tools/tool-registry.js';
 import { LSTool } from '../tools/ls.js';
-import { ReadFileTool } from '../tools/read-file.js';
+import { ReadFilesTool } from '../tools/read-files.js';
 import { GrepTool } from '../tools/grep.js';
 import { canUseRipgrep, RipGrepTool } from '../tools/ripGrep.js';
 import { GlobTool } from '../tools/glob.js';
@@ -2240,12 +2240,12 @@ export class Config {
    * @param absolutePath The absolute path to check.
    * @returns true if the path is allowed, false otherwise.
    */
-  isPathAllowed(absolutePath: string): boolean {
+  isPathInWorkspaceOrTemp(absolutePath: string): boolean {
     const realpath = (p: string) => {
       let resolved: string;
       try {
         resolved = fs.realpathSync(p);
-      } catch {
+      } catch (_e) {
         resolved = path.resolve(p);
       }
       return os.platform() === 'win32' ? resolved.toLowerCase() : resolved;
@@ -2265,16 +2265,19 @@ export class Config {
   }
 
   /**
-   * Validates if a path is allowed and returns a detailed error message if not.
+   * Checks if a path is within the workspace or temporary directory.
+   * If not, it asks the user for permission to exit the workspace.
    *
-   * @param absolutePath The absolute path to validate.
+   * @param absolutePath The absolute path to check.
    * @param checkType The type of access to check ('read' or 'write'). Defaults to 'write' for safety.
-   * @returns An error message string if the path is disallowed, null otherwise.
+   * @param signal Optional abort signal.
+   * @returns An error message string if the user denies permission, null otherwise.
    */
-  validatePathAccess(
+  async checkWorkspaceExit(
     absolutePath: string,
     checkType: 'read' | 'write' = 'write',
-  ): string | null {
+    signal?: AbortSignal,
+  ): Promise<string | null> {
     // For read operations, check read-only paths first
     if (checkType === 'read') {
       if (this.getWorkspaceContext().isPathReadable(absolutePath)) {
@@ -2284,16 +2287,34 @@ export class Config {
 
     // Then check standard allowed paths (Workspace + Temp)
     // This covers 'write' checks and acts as a fallback/temp-dir check for 'read'
-    if (this.isPathAllowed(absolutePath)) {
+    if (this.isPathInWorkspaceOrTemp(absolutePath)) {
       return null;
     }
 
     const workspaceDirs = this.getWorkspaceContext().getDirectories();
     const projectTempDir = this.storage.getProjectTempDir();
-    return `Path not in workspace: Attempted path "${absolutePath}" resolves outside the allowed workspace directories: ${workspaceDirs.join(', ')} or the project temp directory: ${projectTempDir}`;
+
+    // Instead of hard block, ask for permission
+    const result = await this.messageBus.askUser(
+      {
+        questions: [
+          {
+            header: 'Workspace Exit',
+            type: 'yesno',
+            question: `You are attempting to access a path outside the workspace: "${absolutePath}". Do you want to allow ${checkType} access to this path?`,
+          },
+        ],
+      },
+      signal,
+    );
+
+    if (result.answers[0] === 'yes') {
+      return null;
+    }
+
+    return `Workspace Exit Denied: Access to "${absolutePath}" outside the allowed workspace or project temp directory was denied by the user.`;
   }
 
-  /**
    * Set a custom FileSystemService
    */
   setFileSystemService(fileSystemService: FileSystemService): void {
@@ -2643,8 +2664,8 @@ export class Config {
     maybeRegister(LSTool, () =>
       registry.registerTool(new LSTool(this, this.messageBus)),
     );
-    maybeRegister(ReadFileTool, () =>
-      registry.registerTool(new ReadFileTool(this, this.messageBus)),
+    maybeRegister(ReadFilesTool, () =>
+      registry.registerTool(new ReadFilesTool(this, this.messageBus)),
     );
 
     if (this.getUseRipgrep()) {

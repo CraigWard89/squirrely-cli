@@ -126,13 +126,21 @@ export async function getCorrectedFileContent(
         old_string: originalContent, // Treat entire current content as old_string
         new_string: proposedContent,
         file_path: filePath,
-      },
+        instruction: 'Update entire file content.',
+        edits: [
+          {
+            start_line: 1,
+            end_line: originalContent.split('\n').length,
+            content: proposedContent,
+          },
+        ],
+      } as any,
       config.getGeminiClient(),
       config.getBaseLlmClient(),
       abortSignal,
       config.getDisableLLMCorrection(),
     );
-    correctedContent = correctedParams.new_string;
+    correctedContent = correctedParams.new_string ?? correctedContent;
   } else {
     // This implies new file (ENOENT)
     correctedContent = await ensureCorrectFileContent(
@@ -242,12 +250,16 @@ class WriteFileToolInvocation extends BaseToolInvocation<
     return confirmationDetails;
   }
 
-  async execute(abortSignal: AbortSignal): Promise<ToolResult> {
-    const validationError = this.config.validatePathAccess(this.resolvedPath);
+  async execute(signal: AbortSignal): Promise<ToolResult> {
+    const validationError = await this.config.checkWorkspaceExit(
+      this.resolvedPath,
+      'write',
+      signal,
+    );
     if (validationError) {
       return {
         llmContent: validationError,
-        returnDisplay: 'Error: Path not in workspace.',
+        returnDisplay: 'Workspace access denied.',
         error: {
           message: validationError,
           type: ToolErrorType.PATH_NOT_IN_WORKSPACE,
@@ -255,7 +267,6 @@ class WriteFileToolInvocation extends BaseToolInvocation<
       };
     }
 
-    const { content, ai_proposed_content, modified_by_user } = this.params;
     const correctedContentResult = await getCorrectedFileContent(
       this.config,
       this.resolvedPath,
@@ -468,11 +479,6 @@ export class WriteFileTool
     }
 
     const resolvedPath = path.resolve(this.config.getTargetDir(), filePath);
-
-    const validationError = this.config.validatePathAccess(resolvedPath);
-    if (validationError) {
-      return validationError;
-    }
 
     try {
       if (fs.existsSync(resolvedPath)) {

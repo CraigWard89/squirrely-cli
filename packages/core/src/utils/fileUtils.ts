@@ -410,6 +410,7 @@ export async function processSingleFileContent(
   _fileSystemService: FileSystemService,
   startLine?: number,
   endLine?: number,
+  includeLineNumbers?: boolean,
 ): Promise<ProcessedFileReadResult> {
   try {
     if (!fs.existsSync(filePath)) {
@@ -495,14 +496,20 @@ export async function processSingleFileContent(
         const selectedLines = lines.slice(actualStart, sliceEnd);
 
         let linesWereTruncatedInLength = false;
-        const formattedLines = selectedLines.map((line) => {
+        const formattedLines = selectedLines.map((line, index) => {
+          const lineNumber = actualStart + index + 1;
+          const linePrefix = includeLineNumbers
+            ? `${lineNumber.toString().padStart(6, ' ')} | `
+            : '';
           if (line.length > MAX_LINE_LENGTH_TEXT_FILE) {
             linesWereTruncatedInLength = true;
             return (
-              line.substring(0, MAX_LINE_LENGTH_TEXT_FILE) + '... [truncated]'
+              linePrefix +
+              line.substring(0, MAX_LINE_LENGTH_TEXT_FILE) +
+              '... [truncated]'
             );
           }
-          return line;
+          return linePrefix + line;
         });
 
         const isTruncated =

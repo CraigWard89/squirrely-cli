@@ -12,7 +12,7 @@ export class SdkAgentFilesystem implements AgentFilesystem {
   constructor(private readonly config: CoreConfig) {}
 
   async readFile(path: string): Promise<string | null> {
-    const error = this.config.validatePathAccess(path, 'read');
+    const error = await this.config.validatePathAccess(path, 'read');
     if (error) {
       // For now, if access is denied, we can either throw or return null.
       // Returning null makes sense for "file not found or readable".
@@ -26,7 +26,7 @@ export class SdkAgentFilesystem implements AgentFilesystem {
   }
 
   async writeFile(path: string, content: string): Promise<void> {
-    const error = this.config.validatePathAccess(path, 'write');
+    const error = await this.config.validatePathAccess(path, 'write');
     if (error) {
       throw new Error(error);
     }

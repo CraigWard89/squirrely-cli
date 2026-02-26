@@ -24,14 +24,13 @@ export {
   GLOB_TOOL_NAME,
   GREP_TOOL_NAME,
   LS_TOOL_NAME,
-  READ_FILE_TOOL_NAME,
+  READ_FILES_TOOL_NAME,
   SHELL_TOOL_NAME,
   WRITE_FILE_TOOL_NAME,
   EDIT_TOOL_NAME,
   WEB_SEARCH_TOOL_NAME,
   WRITE_TODOS_TOOL_NAME,
   WEB_FETCH_TOOL_NAME,
-  READ_MANY_FILES_TOOL_NAME,
   MEMORY_TOOL_NAME,
   GET_INTERNAL_DOCS_TOOL_NAME,
   ACTIVATE_SKILL_TOOL_NAME,
@@ -63,11 +62,11 @@ export function getToolSet(modelId?: string): CoreToolSet {
 // TOOL DEFINITIONS (LEGACY EXPORTS)
 // ============================================================================
 
-export const READ_FILE_DEFINITION: ToolDefinition = {
+export const READ_FILES_DEFINITION: ToolDefinition = {
   get base() {
-    return DEFAULT_LEGACY_SET.read_file;
+    return DEFAULT_LEGACY_SET.read_files;
   },
-  overrides: (modelId) => getToolSet(modelId).read_file,
+  overrides: (modelId) => getToolSet(modelId).read_files,
 };
 
 export const WRITE_FILE_DEFINITION: ToolDefinition = {
@@ -124,13 +123,6 @@ export const WEB_FETCH_DEFINITION: ToolDefinition = {
     return DEFAULT_LEGACY_SET.web_fetch;
   },
   overrides: (modelId) => getToolSet(modelId).web_fetch,
-};
-
-export const READ_MANY_FILES_DEFINITION: ToolDefinition = {
-  get base() {
-    return DEFAULT_LEGACY_SET.read_many_files;
-  },
-  overrides: (modelId) => getToolSet(modelId).read_many_files,
 };
 
 export const MEMORY_DEFINITION: ToolDefinition = {

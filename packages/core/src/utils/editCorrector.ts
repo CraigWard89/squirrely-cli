@@ -206,7 +206,7 @@ export async function ensureCorrectEdit(
   } else if (occurrences > 1 && !allowMultiple) {
     // If user doesn't allow multiple but found multiple, return as-is (will fail validation later)
     const result: CorrectedEditResult = {
-      params: { ...originalParams },
+      params: { ...originalParams } as any,
       occurrences,
     };
     editCorrectionCache.set(cacheKey, result);
@@ -214,7 +214,7 @@ export async function ensureCorrectEdit(
   } else {
     // occurrences is 0 or some other unexpected state initially
     const unescapedOldStringAttempt = unescapeStringForGeminiBug(
-      originalParams.old_string,
+      originalParams.old_string!,
     );
     occurrences = countOccurrences(currentContent, unescapedOldStringAttempt);
 
@@ -227,9 +227,9 @@ export async function ensureCorrectEdit(
       if (newStringPotentiallyEscaped && !disableLLMCorrection) {
         finalNewString = await correctNewString(
           baseLlmClient,
-          originalParams.old_string, // original old
+          originalParams.old_string!, // original old
           unescapedOldStringAttempt, // corrected old
-          originalParams.new_string, // original new (which is potentially escaped)
+          originalParams.new_string!, // original new (which is potentially escaped)
           abortSignal,
         );
       }
@@ -253,7 +253,7 @@ export async function ensureCorrectEdit(
             // Hard coded for 2 seconds
             // This file was edited sooner
             const result: CorrectedEditResult = {
-              params: { ...originalParams },
+              params: { ...originalParams } as any,
               occurrences: 0, // Explicitly 0 as LLM failed
             };
             editCorrectionCache.set(cacheKey, result);
@@ -264,7 +264,7 @@ export async function ensureCorrectEdit(
 
       if (disableLLMCorrection) {
         const result: CorrectedEditResult = {
-          params: { ...originalParams },
+          params: { ...originalParams } as any,
           occurrences: 0,
         };
         editCorrectionCache.set(cacheKey, result);
@@ -292,11 +292,11 @@ export async function ensureCorrectEdit(
 
         if (newStringPotentiallyEscaped) {
           const baseNewStringForLLMCorrection = unescapeStringForGeminiBug(
-            originalParams.new_string,
+            originalParams.new_string!,
           );
           finalNewString = await correctNewString(
             baseLlmClient,
-            originalParams.old_string, // original old
+            originalParams.old_string!, // original old
             llmCorrectedOldString, // corrected old
             baseNewStringForLLMCorrection, // base new for correction
             abortSignal,
@@ -305,7 +305,7 @@ export async function ensureCorrectEdit(
       } else {
         // LLM correction also failed for old_string
         const result: CorrectedEditResult = {
-          params: { ...originalParams },
+          params: { ...originalParams } as any,
           occurrences: 0, // Explicitly 0 as LLM failed
         };
         editCorrectionCache.set(cacheKey, result);
@@ -314,7 +314,7 @@ export async function ensureCorrectEdit(
     } else {
       // Unescaping old_string resulted in > 1 occurrence but not allowMultiple
       const result: CorrectedEditResult = {
-        params: { ...originalParams },
+        params: { ...originalParams } as any,
         occurrences, // This will be > 1
       };
       editCorrectionCache.set(cacheKey, result);
@@ -323,8 +323,8 @@ export async function ensureCorrectEdit(
   }
 
   const { targetString, pair } = trimPairIfPossible(
-    finalOldString,
-    finalNewString,
+    finalOldString!,
+    finalNewString!,
     currentContent,
     allowMultiple,
   );
@@ -335,10 +335,10 @@ export async function ensureCorrectEdit(
   const result: CorrectedEditResult = {
     params: {
       file_path: originalParams.file_path,
-      old_string: finalOldString,
-      new_string: finalNewString,
+      old_string: finalOldString!,
+      new_string: finalNewString!,
     },
-    occurrences: countOccurrences(currentContent, finalOldString), // Recalculate occurrences with the final old_string
+    occurrences: countOccurrences(currentContent, finalOldString!), // Recalculate occurrences with the final old_string
   };
   editCorrectionCache.set(cacheKey, result);
   return result;

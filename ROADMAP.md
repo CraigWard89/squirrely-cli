@@ -103,11 +103,13 @@ to learn how to get started. There are many ways to get involved:
   with as much detail as possible. If you believe it is a critical breaking
   issue preventing direct CLI usage, please tag it as `priority/p0`.
 - **Suggest Features:** Have a great idea? We'd love to hear it! Open a
-  [feature request](https://github.com/google-gemini/gemini-cli/issues/new?template=feature_request.yml).
-- **Contribute Code:** Check out our
-  [CONTRIBUTING.md](https://github.com/google-gemini/gemini-cli/blob/main/CONTRIBUTING.md)
-  file for guidelines on how to submit pull requests. We have a list of "good
-  first issues" for new contributors.
-- **Write Documentation:** Help us improve our documentation, tutorials, and
+- **Quality:** Focus on testing, reliability, performance, and overall product
+  quality.
+- **Advanced Reasoning:** Deep think mode and deep research mode for complex problem solving.
+- **Background Agents:** Enable long-running, autonomous tasks and proactive
+  assistance.
+- **Security and Privacy:** For all things related to security and privacy
+
+
   examples. We are excited about the future of Gemini CLI and look forward to
   building it with you!

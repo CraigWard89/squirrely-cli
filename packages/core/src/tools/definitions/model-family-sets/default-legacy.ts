@@ -14,13 +14,12 @@ import {
   GLOB_TOOL_NAME,
   GREP_TOOL_NAME,
   LS_TOOL_NAME,
-  READ_FILE_TOOL_NAME,
+  READ_FILES_TOOL_NAME,
   WRITE_FILE_TOOL_NAME,
   EDIT_TOOL_NAME,
   WEB_SEARCH_TOOL_NAME,
   WRITE_TODOS_TOOL_NAME,
   WEB_FETCH_TOOL_NAME,
-  READ_MANY_FILES_TOOL_NAME,
   MEMORY_TOOL_NAME,
   GET_INTERNAL_DOCS_TOOL_NAME,
   ASK_USER_TOOL_NAME,
@@ -33,28 +32,78 @@ import {
 } from '../dynamic-declaration-helpers.js';
 
 export const DEFAULT_LEGACY_SET: CoreToolSet = {
-  read_file: {
-    name: READ_FILE_TOOL_NAME,
-    description: `Reads and returns the content of a specified file. If the file is large, the content will be truncated. The tool's response will clearly indicate if truncation has occurred and will provide details on how to read more of the file using the 'start_line' and 'end_line' parameters. Handles text, images (PNG, JPG, GIF, WEBP, SVG, BMP), audio files (MP3, WAV, AIFF, AAC, OGG, FLAC), and PDF files. For text files, it can read specific line ranges.`,
+  read_files: {
+    name: READ_FILES_TOOL_NAME,
+    description: `Reads and returns the content of one or more specified files. If a file is large, its content will be truncated. The tool's response will clearly indicate if truncation has occurred and will provide details on how to read more of the file using the 'start_line' and 'end_line' parameters. Handles text, images (PNG, JPG, GIF, WEBP, SVG, BMP), audio files (MP3, WAV, AIFF, AAC, OGG, FLAC), and PDF files. For text files, it can read specific line ranges. This tool supports reading multiple files in parallel. You can provide a list of specific files to read, or use glob patterns to include multiple files from the workspace.`,
     parametersJsonSchema: {
       type: 'object',
       properties: {
-        file_path: {
-          description: 'The path to the file to read.',
-          type: 'string',
-        },
-        start_line: {
+        files: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              file_path: {
+                description: 'The path to the file to read.',
+                type: 'string',
+              },
+              start_line: {
+                description:
+                  'Optional: The 1-based line number to start reading from.',
+                type: 'number',
+              },
+              end_line: {
+                description:
+                  'Optional: The 1-based line number to end reading at (inclusive).',
+                type: 'number',
+              },
+              include_line_numbers: {
+                description:
+                  'Optional: If true, includes 1-based line numbers at the start of each line.',
+                type: 'boolean',
+              },
+            },
+            required: ['file_path'],
+          },
           description:
-            'Optional: The 1-based line number to start reading from.',
-          type: 'number',
+            'A list of specific files to read, each with optional line ranges and line numbering.',
         },
-        end_line: {
+        include: {
+          type: 'array',
+          items: {
+            type: 'string',
+            minLength: 1,
+          },
           description:
-            'Optional: The 1-based line number to end reading at (inclusive).',
-          type: 'number',
+            'Optional: Glob patterns to include files (e.g., ["src/**/*.ts"]). Files found via globs will be read in their entirety (up to truncation limits).',
+        },
+        exclude: {
+          type: 'array',
+          items: {
+            type: 'string',
+            minLength: 1,
+          },
+          description:
+            'Optional: Glob patterns to exclude files from the "include" results.',
+        },
+        file_filtering_options: {
+          description:
+            'Whether to respect ignore patterns from .gitignore or .geminiignore',
+          type: 'object',
+          properties: {
+            respect_git_ignore: {
+              description:
+                'Optional: Whether to respect .gitignore patterns. Defaults to true.',
+              type: 'boolean',
+            },
+            respect_gemini_ignore: {
+              description:
+                'Optional: Whether to respect .geminiignore patterns. Defaults to true.',
+              type: 'boolean',
+            },
+          },
         },
       },
-      required: ['file_path'],
     },
   },
 
@@ -289,18 +338,7 @@ export const DEFAULT_LEGACY_SET: CoreToolSet = {
 
   replace: {
     name: EDIT_TOOL_NAME,
-    description: `Replaces text within a file. By default, the tool expects to find and replace exactly ONE occurrence of \`old_string\`. If you want to replace multiple occurrences of the exact same string, set \`allow_multiple\` to true. This tool requires providing significant context around the change to ensure precise targeting. Always use the ${READ_FILE_TOOL_NAME} tool to examine the file's current content before attempting a text replacement.
-      
-      The user has the ability to modify the \`new_string\` content. If modified, this will be stated in the response.
-      
-      Expectation for required parameters:
-      1. \`old_string\` MUST be the exact literal text to replace (including all whitespace, indentation, newlines, and surrounding code etc.).
-      2. \`new_string\` MUST be the exact literal text to replace \`old_string\` with (also including all whitespace, indentation, newlines, and surrounding code etc.). Ensure the resulting code is correct and idiomatic and that \`old_string\` and \`new_string\` are different.
-      3. \`instruction\` is the detailed instruction of what needs to be changed. It is important to Make it specific and detailed so developers or large language models can understand what needs to be changed and perform the changes on their own if necessary. 
-      4. NEVER escape \`old_string\` or \`new_string\`, that would break the exact literal text requirement.
-      **Important:** If ANY of the above are not satisfied, the tool will fail. CRITICAL for \`old_string\`: Must uniquely identify the instance(s) to change. Include at least 3 lines of context BEFORE and AFTER the target text, matching whitespace and indentation precisely. If this string matches multiple locations and \`allow_multiple\` is not true, the tool will fail.
-      5. Prefer to break down complex and long changes into multiple smaller atomic calls to this tool. Always check the content of the file after changes or not finding a string to match.
-      **Multiple replacements:** Set \`allow_multiple\` to true if you want to replace ALL occurrences that match \`old_string\` exactly.`,
+    description: `Replaces content in a file. Takes a list of edits, each with a range of lines and the new content to replace them with. For deletions, set the content to an empty string. For insertions, set the 'start_line' and 'end_line' to the same line number (the insertion will happen AFTER that line). To insert at the beginning of the file, use start_line: 0 and end_line: 0. This tool requires examining the file's current content with '${READ_FILES_TOOL_NAME}' (ideally with 'include_line_numbers: true') before attempting an edit.`,
     parametersJsonSchema: {
       type: 'object',
       properties: {
@@ -315,34 +353,36 @@ A good instruction should concisely answer:
 1.  WHY is the change needed? (e.g., "To fix a bug where users can be null...")
 2.  WHERE should the change happen? (e.g., "...in the 'renderUserProfile' function...")
 3.  WHAT is the high-level change? (e.g., "...add a null check for the 'user' object...")
-4.  WHAT is the desired outcome? (e.g., "...so that it displays a loading spinner instead of crashing.")
-
-**GOOD Example:** "In the 'calculateTotal' function, correct the sales tax calculation by updating the 'taxRate' constant from 0.05 to 0.075 to reflect the new regional tax laws."
-
-**BAD Examples:**
-- "Change the text." (Too vague)
-- "Fix the bug." (Doesn't explain the bug or the fix)
-- "Replace the line with this new line." (Brittle, just repeats the other parameters)
-`,
+4.  WHAT is the desired outcome? (e.g., "...so that it displays a loading spinner instead of crashing.")`,
           type: 'string',
         },
-        old_string: {
-          description:
-            'The exact literal text to replace, preferably unescaped. For single replacements (default), include at least 3 lines of context BEFORE and AFTER the target text, matching whitespace and indentation precisely. If this string is not the exact literal text (i.e. you escaped it) or does not match exactly, the tool will fail.',
-          type: 'string',
-        },
-        new_string: {
-          description:
-            "The exact literal text to replace `old_string` with, preferably unescaped. Provide the EXACT text. Ensure the resulting code is correct and idiomatic. Do not use omission placeholders like '(rest of methods ...)', '...', or 'unchanged code'; provide exact literal code.",
-          type: 'string',
-        },
-        allow_multiple: {
-          type: 'boolean',
-          description:
-            'If true, the tool will replace all occurrences of `old_string`. If false (default), it will only succeed if exactly one occurrence is found.',
+        edits: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              start_line: {
+                description:
+                  'The 1-based line number to start the replacement at (inclusive).',
+                type: 'number',
+              },
+              end_line: {
+                description:
+                  'The 1-based line number to end the replacement at (inclusive).',
+                type: 'number',
+              },
+              content: {
+                description:
+                  'The literal text to replace the specified line range with. Ensure indentation is correct.',
+                type: 'string',
+              },
+            },
+            required: ['start_line', 'end_line', 'content'],
+          },
+          description: 'A list of one or more edits to apply to the file.',
         },
       },
-      required: ['file_path', 'instruction', 'old_string', 'new_string'],
+      required: ['file_path', 'instruction', 'edits'],
     },
   },
 
@@ -376,76 +416,6 @@ A good instruction should concisely answer:
         },
       },
       required: ['prompt'],
-    },
-  },
-
-  read_many_files: {
-    name: READ_MANY_FILES_TOOL_NAME,
-    description: `Reads content from multiple files specified by glob patterns within a configured target directory. For text files, it concatenates their content into a single string. It is primarily designed for text-based files. However, it can also process image (e.g., .png, .jpg), audio (e.g., .mp3, .wav), and PDF (.pdf) files if their file names or extensions are explicitly included in the 'include' argument. For these explicitly requested non-text files, their data is read and included in a format suitable for model consumption (e.g., base64 encoded).
-
-This tool is useful when you need to understand or analyze a collection of files, such as:
-- Getting an overview of a codebase or parts of it (e.g., all TypeScript files in the 'src' directory).
-- Finding where specific functionality is implemented if the user asks broad questions about code.
-- Reviewing documentation files (e.g., all Markdown files in the 'docs' directory).
-- Gathering context from multiple configuration files.
-- When the user asks to "read all files in X directory" or "show me the content of all Y files".
-
-Use this tool when the user's query implies needing the content of several files simultaneously for context, analysis, or summarization. For text files, it uses default UTF-8 encoding and a '--- {filePath} ---' separator between file contents. The tool inserts a '--- End of content ---' after the last file. Ensure glob patterns are relative to the target directory. Glob patterns like 'src/**/*.js' are supported. Avoid using for single files if a more specific single-file reading tool is available, unless the user specifically requests to process a list containing just one file via this tool. Other binary files (not explicitly requested as image/audio/PDF) are generally skipped. Default excludes apply to common non-text files (except for explicitly requested images/audio/PDFs) and large dependency directories unless 'useDefaultExcludes' is false.`,
-    parametersJsonSchema: {
-      type: 'object',
-      properties: {
-        include: {
-          type: 'array',
-          items: {
-            type: 'string',
-            minLength: 1,
-          },
-          minItems: 1,
-          description:
-            'An array of glob patterns or paths. Examples: ["src/**/*.ts"], ["README.md", "docs/"]',
-        },
-        exclude: {
-          type: 'array',
-          items: {
-            type: 'string',
-            minLength: 1,
-          },
-          description:
-            'Optional. Glob patterns for files/directories to exclude. Added to default excludes if useDefaultExcludes is true. Example: "**/*.log", "temp/"',
-          default: [],
-        },
-        recursive: {
-          type: 'boolean',
-          description:
-            'Optional. Whether to search recursively (primarily controlled by `**` in glob patterns). Defaults to true.',
-          default: true,
-        },
-
-        useDefaultExcludes: {
-          type: 'boolean',
-          description:
-            'Optional. Whether to apply a list of default exclusion patterns (e.g., node_modules, .git, binary files). Defaults to true.',
-          default: true,
-        },
-        file_filtering_options: {
-          description:
-            'Whether to respect ignore patterns from .gitignore or .geminiignore',
-          type: 'object',
-          properties: {
-            respect_git_ignore: {
-              description:
-                'Optional: Whether to respect .gitignore patterns when listing files. Only available in git repositories. Defaults to true.',
-              type: 'boolean',
-            },
-            respect_gemini_ignore: {
-              description:
-                'Optional: Whether to respect .geminiignore patterns when listing files. Defaults to true.',
-              type: 'boolean',
-            },
-          },
-        },
-      },
-      required: ['include'],
     },
   },
 

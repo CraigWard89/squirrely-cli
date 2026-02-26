@@ -178,14 +178,15 @@ class GrepToolInvocation extends BaseToolInvocation<
       const pathParam = this.params.dir_path || '.';
 
       const searchDirAbs = path.resolve(this.config.getTargetDir(), pathParam);
-      const validationError = this.config.validatePathAccess(
-        searchDirAbs,
+      const validationError = await this.config.checkWorkspaceExit(
+        resolvedPath,
         'read',
+        signal,
       );
       if (validationError) {
         return {
           llmContent: validationError,
-          returnDisplay: 'Error: Path not in workspace.',
+          returnDisplay: 'Workspace access denied.',
           error: {
             message: validationError,
             type: ToolErrorType.PATH_NOT_IN_WORKSPACE,
@@ -193,7 +194,6 @@ class GrepToolInvocation extends BaseToolInvocation<
         };
       }
 
-      // Check existence and type asynchronously
       try {
         const stats = await fsPromises.stat(searchDirAbs);
         if (!stats.isDirectory() && !stats.isFile()) {
@@ -635,13 +635,6 @@ export class RipGrepTool extends BaseDeclarativeTool<
         this.config.getTargetDir(),
         params.dir_path,
       );
-      const validationError = this.config.validatePathAccess(
-        resolvedPath,
-        'read',
-      );
-      if (validationError) {
-        return validationError;
-      }
 
       // Check existence and type
       try {

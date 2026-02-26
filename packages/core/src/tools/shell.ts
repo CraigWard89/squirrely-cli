@@ -192,19 +192,22 @@ export class ShellToolInvocation extends BaseToolInvocation<
         ? path.resolve(this.config.getTargetDir(), this.params.dir_path)
         : this.config.getTargetDir();
 
-      const validationError = this.config.validatePathAccess(cwd);
+      const validationError = await this.config.checkWorkspaceExit(
+        resolvedPath,
+        'write',
+        signal,
+      );
       if (validationError) {
         return {
           llmContent: validationError,
-          returnDisplay: 'Path not in workspace.',
+          returnDisplay: 'Workspace access denied.',
           error: {
             message: validationError,
             type: ToolErrorType.PATH_NOT_IN_WORKSPACE,
           },
         };
       }
-      let cumulativeOutput: string | AnsiOutput = '';
-      let lastUpdateTime = Date.now();
+
       let isBinaryStream = false;
 
       const resetTimeout = () => {
@@ -490,11 +493,7 @@ export class ShellTool extends BaseDeclarativeTool<
     }
 
     if (params.dir_path) {
-      const resolvedPath = path.resolve(
-        this.config.getTargetDir(),
-        params.dir_path,
-      );
-      return this.config.validatePathAccess(resolvedPath);
+      path.resolve(this.config.getTargetDir(), params.dir_path);
     }
     return null;
   }

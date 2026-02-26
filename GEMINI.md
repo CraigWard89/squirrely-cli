@@ -6,10 +6,19 @@ powerful tool for developers.
 
 ## Efficiency Guidelines
 
-- **Maximize Parallelism:** Execute independent tool calls (e.g., multiple `grep_search`, `glob`, or `read_file` calls) in parallel to minimize session turns.
-- **Bulk Operations:** Favor broad searches (e.g., `grep_search` on directories) over sequential file-by-file inspection.
-- **High-Signal Reads:** Use `context`, `before`, and `after` parameters in `grep_search` to gather enough information for an edit without needing a separate `read_file` call.
-- **Strategic Planning:** Analyze the codebase thoroughly before making changes to ensure edits are surgical, idiomatic, and minimize the risk of regressions.
+- **Maximize Efficiency:** Always aim to be efficient and fast. Minimize the number of turns by executing multiple tool calls in parallel and avoiding redundant operations.
+- **Avoid Meaningless Tool Calls:** Do not call tools in silence or perform repetitive, low-signal operations. Every tool call should have a clear purpose and intent.
+- **Strategic Planning:** Plan ahead and carefully consider your next moves before executing changes. Use `enter_plan_mode` for complex designs.
+- **Update Indexes and Outlines:** Proactively improve and update the `INDEX.md`, `GEMINI.md`, and other outline files to reflect the current state and structure.
+- **High-Signal Reads:** Use `context`, `before`, and `after` parameters in `grep_search` to gather enough information for an edit without needing a separate `read_files` call.
+- **Tool Consolidation:** Try to keep tools as minimal and consolidated as possible to prevent unwanted token usage (e.g., combining single and multi-file read operations).
+
+## Project Mandates
+
+- **Workspace Exit Checker:** The agent uses an interactive "Workspace Exit Checker" (`checkWorkspaceExit`) whenever it attempts to access files outside the workspace or project temp directory. It will explicitly ask for your permission before proceeding. Hard-coded path restrictions have been removed in favor of this interactive check.
+- **ReadFolder (LS):** This tool provides detailed directory listings and improved error messages for missing or inaccessible paths.
+- **Massive Purge:** All `test.ts` files, `test-utils`, `policy`, `safety`, and `sandbox` components are obsolete and must be deleted whenever they are encountered as part of the project rework.
+- **Obey Purging Log:** Always refer to and follow the instructions in `docs/purging.md`.
 
 ## Project Overview
 
@@ -21,7 +30,6 @@ powerful tool for developers.
   - **Language:** TypeScript
   - **UI Framework:** React (using [Ink](https://github.com/vadimdemedes/ink)
     for CLI rendering)
-  - **Testing:** Vitest
   - **Bundling:** esbuild
   - **Linting/Formatting:** ESLint, Prettier
 - **Architecture:** Monorepo structure using npm workspaces.
@@ -31,37 +39,15 @@ powerful tool for developers.
     construction, and tool execution.
   - `packages/core/src/tools/`: Built-in tools for file system, shell, and web
     operations.
-  - `packages/a2a-server`: Experimental Agent-to-Agent server.
-  - `packages/vscode-ide-companion`: VS Code extension pairing with the CLI.
 
 ## Building and Running
 
 - **Install Dependencies:** `npm install`
-- **Build All:** `npm run build:all` (Builds packages, sandbox, and VS Code
-  companion)
 - **Build Packages:** `npm run build`
 - **Run in Development:** `npm run start`
 - **Run in Debug Mode:** `npm run debug` (Enables Node.js inspector)
 - **Bundle Project:** `npm run bundle`
 - **Clean Artifacts:** `npm run clean`
-
-## Testing and Quality
-
-- **Test Commands:**
-  - **Unit (All):** `npm run test`
-  - **Integration (E2E):** `npm run test:e2e`
-  - **Workspace-Specific:** `npm test -w <pkg> -- <path>` (Note: `<path>` must
-    be relative to the workspace root, e.g.,
-    `-w @google/gemini-cli-core -- src/routing/modelRouterService.test.ts`)
-- **Full Validation:** `npm run preflight` (Heaviest check; runs clean, install,
-  build, lint, type check, and tests. Recommended before submitting PRs. Due to
-  its long runtime, only run this at the very end of a code implementation task.
-  If it fails, use faster, targeted commands (e.g., `npm run test`,
-  `npm run lint`, or workspace-specific tests) to iterate on fixes before
-  re-running `preflight`. For simple, non-code changes like documentation or
-  prompting updates, skip `preflight` at the end of the task and wait for PR
-  validation.)
-- **Individual Checks:** `npm run lint` / `npm run format` / `npm run typecheck`
 
 ## Development Conventions
 
@@ -84,14 +70,6 @@ powerful tool for developers.
   include the Apache-2.0 license header with the current year. (e.g.,
   `Copyright 2026 Google LLC`). This is enforced by ESLint.
 
-## Testing Conventions
-
-- **Environment Variables:** When testing code that depends on environment
-  variables, use `vi.stubEnv('NAME', 'value')` in `beforeEach` and
-  `vi.unstubAllEnvs()` in `afterEach`. Avoid modifying `process.env` directly as
-  it can lead to test leakage and is less reliable. To "unset" a variable, use
-  an empty string `vi.stubEnv('NAME', '')`.
-
 ## Documentation
 
 - Always use the `docs-writer` skill when you are asked to write, edit, or
@@ -100,4 +78,3 @@ powerful tool for developers.
 - Always keep the changelog in `docs/changelogs/` up to date and current.
 - Suggest documentation updates when code changes render existing documentation
   obsolete or incomplete.
-
